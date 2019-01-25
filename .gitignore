@@ -1,0 +1,5 @@
+*.*
+*shell*
+!la_permanence_scraping.py
+!attendance.csv
+!.gitignore
