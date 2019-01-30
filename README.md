@@ -1,4 +1,4 @@
-# Attendance at *La Permanence* coworking space #
+# Attendance at *La Permanence* coworking spaces #
 
 
 
@@ -9,11 +9,14 @@ Fer à Moulin* and *rue d'Alésia*.
 This project monitors the number of available seats at the two
 locations and performs some simple analysis.
 
+![](/Users/antoine/Projects/la_permanence/La-Permanence-attendance.png)
+
+
 There are three main components:  
   1. The data is collected with the script
      `la_permanence_scraping.py`.  
   2. The data is saved in `attendance.csv` (a misnomer, since it
-records the number of available seats rather than the number of seats
+records the number of /available/ seats rather than the number of seats
 used).  
   3. The Jupyter Notebook `la_permanence_EDA.ipynb` performs some
 simple analysis of the data.  

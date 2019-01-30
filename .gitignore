@@ -1,8 +1,10 @@
 *.*
 *shell*
+*markdown-output*
 !la_permanence_scraping.py
 !attendance.csv
 !.gitignore
 !README.md
+!La-Permanence.png
 !la_permanence_EDA.ipynb
 !la_permanence_stats.ipynb
