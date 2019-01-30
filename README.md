@@ -9,7 +9,7 @@ Fer à Moulin* and *rue d'Alésia*.
 This project monitors the number of available seats at the two
 locations and performs some simple analysis.
 
-![](/Users/antoine/Projects/la_permanence/La-Permanence-attendance.png)
+![](La-Permanence-attendance.png)
 
 
 There are three main components:  
