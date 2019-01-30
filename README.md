@@ -11,6 +11,8 @@ locations and performs some simple analysis.
 
 ![](La-Permanence-attendance.png)
 
+The dataset is also [available on kaggle](https://www.kaggle.com/antoinechoffrut/la-permanence-attendance).
+
 
 There are three main components:  
   1. The data is collected with the script
