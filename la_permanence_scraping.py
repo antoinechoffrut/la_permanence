@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
- 
+
 """Scraping for project on attendance at La Permanence."""
- 
+
 # IMPORTS
 import os
 import re
-import time
+#import time
+import datetime
+import pytz
 import logging
 import requests
 from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
-# import shutil
 
 # GLOBAL VARIABLES
 SEP = ","                                # separator for .csv file
-SCRIPT_NAME = os.path.basename(__file__) # or: sys.argv[0]
+SCRIPT_NAME = os.path.basename(__file__)
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 HOME_DIR = os.path.expanduser("~")
@@ -32,38 +33,47 @@ BACKUP_DIR = os.path.join(
 
 
 # LOGGING
-# SIMPLEST OPTION:
-# logging.basicConfig(
-#     level=logging.DEBUG,
-#     format='%(asctime)s - %(levelname)-10s: %(message)s',
-# )
 SCRIPT_LOG = re.sub(".py$", ".log", SCRIPT_NAME)
 SCRIPT_LOG = os.path.join(SCRIPT_DIR, SCRIPT_LOG)
 LOGGER = logging.getLogger("script_logger")   # __name__
 LOGGER.setLevel(logging.DEBUG)
 FILE_HANDLER = logging.FileHandler(SCRIPT_LOG)
-FILE_FORMATTER = logging.Formatter('%(asctime)s - %(levelname)-10s: %(message)s')
+FILE_FORMATTER = logging.Formatter(
+    '%(asctime)s - %(levelname)-10s: %(message)s'
+)
 FILE_HANDLER.setFormatter(FILE_FORMATTER)
 LOGGER.addHandler(FILE_HANDLER)
 
- 
+# TIMEZONES
+TZ_UTC = pytz.timezone("UTC")
+
+# DATETIME FORMATS
+FMT_TS = '%Y-%m-%d %H:%M'    # for timestamps
+FMT_FN = '%Y-%m-%d-%H-%M-%S'    # for filenames
+FMT_LOG = '%a %d %b %Y %H:%M:%S %Z%z'  # for logging
+
+
 # CLASS DEFINITIONS
 
 # FUNCTION DEFINITIONS
- 
- 
+
+
 def main():
     """Get number of available places at La Permanence (two locations
-    in Paris)."""  
+    in Paris)."""
     # Clock IN
-    run_time = time.time()
+    run_time = TZ_UTC.localize(datetime.datetime.now())
+
+    # run_time = time.time()
     # run_local_time = time.localtime(run_time)
-    run_local_time = time.gmtime(run_time)
-    timestamp = time.strftime("%Y-%m-%d-%H-%M-%S", run_local_time)
+    # run_local_time = time.gmtime(run_time)
+    timestamp = run_time.strftime(FMT_FN)
+    # timestamp = time.strftime("%Y-%m-%d-%H-%M-%S", run_local_time)
 
     os.system("clear")
     LOGGER.info("-"*10)
-    LOGGER.info(time.strftime("%a %d %b %Y %H:%M:%S", run_local_time))
+    # LOGGER.info(time.strftime("%a %d %b %Y %H:%M:%S", run_local_time))
+    LOGGER.info(run_time.strftime(FMT_LOG))
     LOGGER.debug("Process id: {}".format(os.getpid()))
     LOGGER.info("Running script {}".format(SCRIPT_NAME))
     LOGGER.debug("Directory: {}".format(SCRIPT_DIR))
@@ -91,7 +101,6 @@ def main():
         LOGGER.debug("URL: {}.".format(url))
         return None
 
-    
     soup = BeautifulSoup(page.text, "html.parser")
     locations = soup.find_all(
         "div",
@@ -128,22 +137,19 @@ def main():
 
     # WRITE DATAFRAME INTO CSV FILE
     df.to_csv(foutname, sep=SEP, index=False)
-    
 
-            
-    
     # CONCLUDING SCRIPT
     end_of_script = time.time()
-    
+
     LOGGER.info(
         "Time stamp: {0} (duration: {1:.2f} sec)".format(
             time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(end_of_script)),
             (end_of_script - run_time)
         )
     )
-    
+
     LOGGER.info("End of script {}".format(SCRIPT_NAME))
 
- 
+
 if __name__ == "__main__":
-	main()
+    main()
