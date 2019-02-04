@@ -6,8 +6,13 @@
 space in Paris") offers two coworking spaces in Paris, in *rue du
 Fer à Moulin* and *rue d'Alésia*.
 
-This project monitors the number of available seats at the two
-locations and performs some simple analysis.
+The end goal of this project is to forecast the number of available
+seats.
+The notebook `la_permanence_EDA.ipynb` provides a quick visualization
+of the data.
+The notebook `la_permanence_stats.ipynb` aims to apply various
+statistical or Machine Learning algorithms to predict the number of
+available seats.
 
 ![](La-Permanence-attendance.png)
 
