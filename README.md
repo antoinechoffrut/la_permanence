@@ -24,9 +24,9 @@ progress.  Here we relay initial observations.
 <img src="La-Permanence-availability.png" alt="Availability at La Permanence coworking spaces"/>
 </p>
 
-The timeseries exhibits multiplicity two: there is a 24-hour as well
-as a 7-day seasonality.
-It makes thus sense to take averages for each day of the week.
+The timeseries exhibits seasonality of multiplicity two: there is a
+24-hour as well as a 7-day seasonality.  It makes thus sense to take
+averages for each day of the week.
 
 
 <p align="center">
@@ -36,6 +36,14 @@ It makes thus sense to take averages for each day of the week.
 <p align="center">
 <img src="Alesia-average-availability.png" alt="Average availability at rue d'Alésia"/>
 </p>
+
+The patterns appear to be somewhat different at the two locations.
+At rue du Fer à Moulin, Sunday is set apart from all other days of
+the week (inclucing Saturday) in that attendance in the afternoon is
+higher. 
+At rue d'Alésia, weekdays exhibit similar patterns, Saturday has less
+attendance and Sunday later afternoon the most.
+
 
 
 ## The dataset
@@ -54,7 +62,7 @@ kaggle](https://www.kaggle.com/antoinechoffrut/la-permanence-attendance).
 
 
 ## Scripts and notebooks
-
+`
 
 1. The script `la_permanence_scraping.py` collects the data every
      minute (most of the time).   
