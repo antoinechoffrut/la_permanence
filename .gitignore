@@ -3,6 +3,8 @@
 *markdown-output*
 SCRIPT_BACKUPS
 la_permanence_stats.ipynb
+!Moulin-average-availability.png
+!Alesia-average-availability.png
 !La-Permanence-screenshot.png
 !La-Permanence-availability.png
 !la_permanence_scraping.py
