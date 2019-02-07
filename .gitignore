@@ -1,10 +1,13 @@
 *.*
 *shell*
 *markdown-output*
+SCRIPT_BACKUPS
+la_permanence_stats.ipynb
+!La-Permanence-screenshot.png
+!La-Permanence-availability.png
 !la_permanence_scraping.py
 !attendance.csv
 !.gitignore
 !README.md
-!La-Permanence-attendance.png
 !la_permanence_EDA.ipynb
-!la_permanence_stats.ipynb
+!la_permanence_seasonality.ipynb
