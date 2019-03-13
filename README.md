@@ -1,7 +1,5 @@
 # Seat availability at *La Permanence* coworking spaces #
 
-*(Last update: 7 Feb 2019)*
-
 [La Permanence](https://www.la-permanence.com "La Permanence coworking
 space in Paris") offers two coworking spaces in Paris, in *rue du
 Fer à Moulin* and *rue d'Alésia*.
@@ -21,7 +19,7 @@ The dataset is still relatively small and this project is work in
 progress.  Here we relay initial observations.  
 
 <p align="center">
-<img src="La-Permanence-availability.png" alt="Availability at La Permanence coworking spaces"/>
+<img src="La-Permanence-availability.png" alt="Availability at La Permanence coworking spaces" width="1000" height="400"/>
 </p>
 
 The timeseries exhibits seasonality of multiplicity two: there is a
@@ -62,14 +60,13 @@ kaggle](https://www.kaggle.com/antoinechoffrut/la-permanence-attendance).
 
 
 ## Scripts and notebooks
-`
 
-1. The script `la_permanence_scraping.py` collects the data every
+
+1. The script `la-permanence-scraping.py` collects the data every
      minute (most of the time).   
-1. The Jupyter Notebook `la_permanence_EDA.ipynb` performs simple
+1. The Jupyter Notebook `la-permanence-EDA.ipynb` performs simple
    operations on the data to gain preliminary understanding.  The
    figures above, for example, are generated in
-   `la_permanence_EDA.ipynb`. 
-1. The Jupyter notebook `la_permanence_stats.ipynb` aims to apply
-   various statistical or Machine Learning algorithms to predict the
-   number of available seats.
+   `la-permanence-EDA.ipynb`. 
+1. The Jupyter notebook `la-permanence-seasonality.ipynb` investigates
+   the seasonality in the data.
