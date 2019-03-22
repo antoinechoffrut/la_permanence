@@ -114,8 +114,11 @@ kaggle](https://www.kaggle.com/antoinechoffrut/la-permanence-attendance).
 ## Notebooks
 1. The Jupyter Notebook `la-permanence-EDA.ipynb` performs simple
    operations on the data to gain preliminary understanding.  
-1. The Jupyter notebook `la-permanence-random-forests.ipynb`
+1. The Jupyter notebook `la-permanence-random-forests-forecasting.ipynb`
    investigates the effectiveness of using random forests to forecast
    the availability of seats at the coworking spaces.  
+1. The choice of parameters in the random forests are determined
+   empirically in the notebook
+   `la-permanence-random-forests-parameters.ipynb`.
 1. The Jupyter notebook `la-permanence-seasonality.ipynb` investigates
    the seasonality in the data.
