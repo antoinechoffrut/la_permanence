@@ -31,7 +31,9 @@ moves along.
 
 The notebook `la-permanence-random-forests.ipynb` investigates the
 effectiveness of random forests in forecasting seat availability at
-the coworking spaces.
+the coworking spaces.  To this end the timestamp has been expanded
+into 16 features.  
+
 
 The following figure shows the splitting between training and
 validation data for the location at rue du Fer à Moulin.
@@ -41,14 +43,31 @@ validation data for the location at rue du Fer à Moulin.
 training and validation data at rue du Fer à Moulin" width="1000"/>
 </p>
 
-The following figure shows that random forests are quite good at
-picking up the general trend but not quite as good in detecting
-particularly high attendance (low availability).  
+The following figure shows a two-week forecast using random forests
+at rue du Fer à Moulin.  
 
 <p align="center"> 
 <img src="moulin-random-forests.png" alt="Forecast of seat
 availability using random forests at rue du Fer à Moulin" width="1000"/>
 </p>
+
+Similarly, the training and validation sets at rue d'Alésia:
+
+<p align="center">
+<img src="alesia-training-validation-split.png" alt="Split between
+training and validation data at rue d'Alésia" width="1000"/>
+</p>
+
+and the two-week forecast:
+<p align="center"> 
+<img src="alesia-random-forests.png" alt="Forecast of seat
+availability using random forests at rue d'Alésia" width="1000"/>
+</p>
+
+
+In conclusion, random forests are quite good at
+picking up the general trend but not quite as good in detecting
+particularly high attendance (low availability)
 
 ## Multiple seasonality
 The timeseries exhibits seasonality of multiplicity two: there is a
