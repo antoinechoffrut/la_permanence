@@ -8,14 +8,14 @@
 !README.md
 
 # IMAGE FILES
-!Moulin-average-availability.png
-!Alesia-average-availability.png
 !La-Permanence-screenshot.png
-!La-Permanence-availability.png
-!alesia-random-forests.png
-!alesia-training-validation-split.png
-!moulin-random-forests.png
+!moulin-availability.png
+!moulin-average-availability.png
+!moulin-24-hour-seasonal-decomposition.png
+!moulin-7-day-on-24-hour-seasonal-decomposition.png
 !moulin-training-validation-split.png
+!moulin-random-forest-forecast-max-depth-*.png
+
 
 # DATASETS
 !attendance.csv
@@ -25,8 +25,9 @@
 
 
 # JUPYTER NOTEBOOKS
-!la-permanence-EDA.ipynb
+!la-permanence-understanding.ipynb
 !la-permanence-seasonality.ipynb
 !la-permanence-random-forests-forecasting.ipynb
 !la-permanence-random-forests-parameters.ipynb
 !la-permanence-random-forests-interpretation.ipynb
+!la-permanence-decision-trees.ipynb
