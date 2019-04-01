@@ -62,17 +62,13 @@ def main():
     """Get number of available places at La Permanence (two locations
     in Paris)."""
     # Clock IN
-    run_time = TZ_UTC.localize(datetime.datetime.now())
+    # run_time = TZ_UTC.localize(datetime.datetime.now())
+    run_time = datetime.datetime.now(tz=TZ_UTC)
 
-    # run_time = time.time()
-    # run_local_time = time.localtime(run_time)
-    # run_local_time = time.gmtime(run_time)
     timestamp = run_time.strftime(FMT_FN)
-    # timestamp = time.strftime("%Y-%m-%d-%H-%M-%S", run_local_time)
 
     os.system("clear")
     LOGGER.info("-"*10)
-    # LOGGER.info(time.strftime("%a %d %b %Y %H:%M:%S", run_local_time))
     LOGGER.info(run_time.strftime(FMT_LOG))
     LOGGER.debug("Process id: {}".format(os.getpid()))
     LOGGER.info("Running script {}".format(SCRIPT_NAME))
