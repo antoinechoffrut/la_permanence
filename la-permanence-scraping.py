@@ -5,6 +5,7 @@
 
 # IMPORTS
 import os
+import sys
 import re
 import shutil
 import datetime
@@ -130,14 +131,21 @@ def main():
     # GET PAGE
     url = "https://www.la-permanence.com"
     LOGGER.info("Grabbing page from url: {}...".format(url))
-    page = requests.get(url)
-    if page.status_code == 200:
+    try:
+        page = requests.get(url)
         LOGGER.info("Done (status code: {}).".format(page.status_code))
-    else:
-        LOGGER.warning("Could not download page")
-        LOGGER.debug("Status code: {}".format(page.status_code))
-        LOGGER.debug("URL: {}.".format(url))
-        return None
+    except requests.ConnectionError as e:
+        LOGGER.error("Error connecting to url {}".format(url))
+        LOGGER.error(e)
+        sys.exit(1)
+
+    # if page.status_code == 200:
+    #     LOGGER.info("Done (status code: {}).".format(page.status_code))
+    # else:
+    #     LOGGER.warning("Could not download page")
+    #     LOGGER.debug("Status code: {}".format(page.status_code))
+    #     LOGGER.debug("URL: {}.".format(url))
+    #    return None
 
     soup = BeautifulSoup(page.text, "html.parser")
     locations = soup.find_all(
@@ -232,8 +240,8 @@ def main():
             else:
                 LOGGER.info("Not yet time to update {0}".format(backup_name))
 
-        
-                
+
+
 
     # CONCLUDING SCRIPT
 
