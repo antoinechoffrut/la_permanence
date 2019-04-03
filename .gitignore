@@ -37,8 +37,8 @@
 !moulin-forecasting-random-forests-max-depth-10.png
 
 
-# DATASETS
-!attendance.csv
+# DATASETS: exclude it to avoid overwriting good files
+#!attendance.csv
 
 # PYTHON SCRIPTS
 !la-permanence-scraping.py
