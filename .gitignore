@@ -9,12 +9,32 @@
 
 # IMAGE FILES
 !La-Permanence-screenshot.png
-!moulin-availability.png
-!moulin-average-availability.png
+
+!moulin-availability-timeseries.png
+!moulin-availability-heatmap.png
+
+!moulin-average-by-day.png
+!moulin-weekly-timeseries.png`
+!moulin-average-heatmap.png
+
 !moulin-24-hour-seasonal-decomposition.png
 !moulin-7-day-on-24-hour-seasonal-decomposition.png
+
+!moulin-training-validation-split-timeseries.png
+
+!moulin-forecasting-random-forests-max-depth-*.png
+!moulin-forecasting-random-forests-min-samples-leaf-*.png
+
+
+
+# Probably won't need those anymore:
+!moulin-average-availability.png
+!moulin-average-timeseries.png
 !moulin-training-validation-split.png
-!moulin-random-forest-forecast-max-depth-*.png
+!moulin-random-forest-forecast-max-depth-10.png
+!moulin-random-forest-forecast-max-depth-5.png
+!moulin-forecasting-random-forests-max-depth-5.png
+!moulin-forecasting-random-forests-max-depth-10.png
 
 
 # DATASETS
