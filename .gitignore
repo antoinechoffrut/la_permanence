@@ -43,6 +43,7 @@
 # PYTHON SCRIPTS
 !la-permanence-scraping.py
 !la-permanence-correct-timezone-error.py
+!report.py
 
 # JUPYTER NOTEBOOKS
 !la-permanence-understanding.ipynb
