@@ -26,15 +26,16 @@
 !moulin-forecasting-random-forests-min-samples-leaf-*.png
 
 
+!moulin-average-timeseries.png
+
 
 # Probably won't need those anymore:
-!moulin-average-availability.png
-!moulin-average-timeseries.png
-!moulin-training-validation-split.png
-!moulin-random-forest-forecast-max-depth-10.png
-!moulin-random-forest-forecast-max-depth-5.png
-!moulin-forecasting-random-forests-max-depth-5.png
-!moulin-forecasting-random-forests-max-depth-10.png
+# !moulin-average-availability.png
+# !moulin-training-validation-split.png
+# !moulin-random-forest-forecast-max-depth-10.png
+# !moulin-random-forest-forecast-max-depth-5.png
+# !moulin-forecasting-random-forests-max-depth-5.png
+# !moulin-forecasting-random-forests-max-depth-10.png
 
 
 # DATASETS: exclude it to avoid overwriting good files

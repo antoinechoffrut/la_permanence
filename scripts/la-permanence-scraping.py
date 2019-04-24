@@ -22,12 +22,15 @@ SCRIPT_NAME = os.path.basename(__file__)
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-PROJECT_DIR = SCRIPT_DIR
+PROJECT_DIR = os.path.join(
+    os.path.expanduser('~'), 'Projects', 'la-permanence'
+)  # SCRIPT_DIR
 BACKUP_DIR = os.path.join(PROJECT_DIR, 'DATA_BACKUPS')
+DATA_DIR = os.path.join(os.path.expanduser('~'), 'Data', 'la-permanence')
 
 DATAFILE_NAME = 'attendance.csv'
 DATAFILE_PATH = os.path.join(
-    PROJECT_DIR,
+    DATA_DIR,
     DATAFILE_NAME  # "attendance.csv"
 )
 

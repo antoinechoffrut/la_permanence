@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Prints the number of new records in the last 5 minutes, hour 24
 hours, 3 days, and week
 
@@ -53,10 +53,12 @@ def row_strf(row):
     cumsum = row['cumsum']
     count = row['count']
 
-    if count == 0:
+    if count == 5:
+        color = GREEN
+    elif count == 0:
         color = RED
     else:
-        color = GREEN
+        color = YELLOW
 
     text = \
         "{0} ({1})".format(
