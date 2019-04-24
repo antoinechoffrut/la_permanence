@@ -5,7 +5,7 @@ space in Paris") offers two coworking spaces in Paris, in *rue du
 Fer à Moulin* and *rue d'Alésia*.
 
 <p align="center">
-<img src="La-Permanence-screenshot.png" alt="La Permanence" width="450"/>
+<img src="images/La-Permanence-screenshot.png" alt="La Permanence" width="450"/>
 </p>
 
 ## Goals
@@ -19,7 +19,7 @@ irregular but frequent intervals) since mid-January 2019.
 
 
 <p align="center">
-<img src="moulin-availability-timeseries.png" alt="Availability at La Permanence
+<img src="images/moulin-availability-timeseries.png" alt="Availability at La Permanence
 coworking space in rue du Fer à Moulin" width="1000" height="250"/>
 </p>
 
@@ -70,7 +70,7 @@ moves along.
 ## Alternative visualization via heatmaps
 We can generate a different visualization of the data as a heatmap:
 
-<p align="center"> <img src="moulin-availability-heatmap.png"
+<p align="center"> <img src="images/moulin-availability-heatmap.png"
 alt="Availability at rue du Fer à Moulin" width="1000"/> </p>
 
 The black cells represent missing data:  
@@ -88,7 +88,7 @@ curve represents their averages; and the red curves represent the last
 week of data in the set (straddling over two weeks, hence split).  
 
 
-<p align="center"> <img src="moulin-weekly-averages.png"
+<p align="center"> <img src="images/moulin-weekly-averages.png"
 alt="Forecasting seat availability using averages` at rue du Fer à
 Moulin" width="1000"/> </p>
 
@@ -100,7 +100,7 @@ distinct from the previous weeks.
 
 Below we show the average data in a heatmap.  
 
-<p align="center"> <img src="moulin-average-heatmap.png"
+<p align="center"> <img src="images/moulin-average-heatmap.png"
 alt="Average availability at rue du Fer à Moulin" width="1000"/> </p>
 
 
@@ -114,7 +114,7 @@ following figure clearly shows that each day of the week has a
 distinct pattern.  
 
 <p align="center">
-<img src="moulin-average-timeseries.png" alt="Average availability
+<img src="images/moulin-average-timeseries.png" alt="Average availability
 at rue du Fer à Moulin"
 width="1000"/>
 </p>
@@ -126,7 +126,7 @@ seasonal decomposition on the original time-series, as shown in the
 figure below.  
 
 <p align="center">
-<img src="moulin-24-hour-seasonal-decomposition.png" alt="24-hour
+<img src="images/moulin-24-hour-seasonal-decomposition.png" alt="24-hour
 seasonal decomposition of the data from rue du Fer à Moulin" width="1000"/>
 </p>
 
@@ -135,7 +135,7 @@ this first decomposition.  Thus we perform a second, 7-day seasonal
 decomposition on this trend as illustrated in the figure below.
 
 <p align="center"> <img
-src="moulin-7-day-on-24-hour-seasonal-decomposition.png" alt="7-day
+src="images/moulin-7-day-on-24-hour-seasonal-decomposition.png" alt="7-day
 seasonal decomposition on the trend resulting from 24-hour seasonal
 decomposition of the data from rue du Fer à Moulin" width="1000"/>
 </p>
@@ -199,7 +199,7 @@ The following figure shows the splitting between training and
 validation data for the location at rue du Fer à Moulin.
 
 <p align="center">
-<img src="moulin-training-validation-split-timeseries.png" alt="Split between
+<img src="images/moulin-training-validation-split-timeseries.png" alt="Split between
 training and validation data at rue du Fer à Moulin" width="1000"/>
 </p>
 
@@ -210,7 +210,7 @@ squared error (RMSE) and $R^2$ score.
 Let's first look at the results with a maximum depth of 5.  
 
 <p align="center"> <img
-src="moulin-forecasting-random-forests-max-depth-5.png" alt="Forecast of
+src="images/moulin-forecasting-random-forests-max-depth-5.png" alt="Forecast of
 seat availability at rue du Fer à Moulin using random forests with max
 depth set to 5" width="1000"/> </p>
 
@@ -234,7 +234,7 @@ Increasing now the maximum depth to 10 improves the predictions at low
 and high availability.  
 
 <p align="center"> <img
-src="moulin-forecasting-random-forests-max-depth-10.png" alt="Forecast of
+src="images/moulin-forecasting-random-forests-max-depth-10.png" alt="Forecast of
 seat availability at rue du Fer à Moulin using random forests with max depth
 set to 10" width="1000"/> </p>
 
@@ -245,7 +245,7 @@ comparable performance.
 
 <p align="center">
 <img
-src="moulin-forecasting-random-forests-min-samples-leaf-200.png"
+src="images/moulin-forecasting-random-forests-min-samples-leaf-200.png"
 alt="Forecast of seat availability at rue du Fer à Moulin using random
 forests with mininum number of samples per leaf set to 200 "
 width="1000"/>
