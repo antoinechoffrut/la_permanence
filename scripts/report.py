@@ -5,13 +5,28 @@ hours, 3 days, and week
 """
 # Imports
 import os
-import sys
+# import sys
 import datetime
 import pytz
 import math
 import pandas as pd
 
 # Constants
+TZ_UTC = pytz.timezone("UTC")
+
+FILEDIR = os.path.join(
+    os.path.expanduser('~'),
+    'Data',
+    'la_permanence'
+)
+FILENAME = 'availability.csv'  # formerly: 'attendance.csv'
+FILEPATH = os.path.join(FILEDIR, FILENAME)
+
+SECONDS_IN_ONE_MINUTE = 60
+MINUTES_IN_ONE_HOUR = 60
+MINUTES_IN_ONE_DAY = 24*MINUTES_IN_ONE_HOUR
+MINUTES_IN_ONE_WEEK = 7*MINUTES_IN_ONE_DAY
+
 BLACK = "30"
 RED = "31"
 GREEN = "32"
@@ -30,18 +45,19 @@ BGMAGENTA = "45"
 BGCYAN = "46"
 BGWHITE = "47"
 
-TIMESTAMP_WIDTH = 15
-ELAPSED_WIDTH = 15
+TIMESTAMP_WIDTH = 20
+ELAPSED_WIDTH = 20
 
 
 # Functions
 def dateparse(str):
-    return pd.datetime.strptime(str, '%Y-%m-%d-%H-%M-%S')
+    return pd.datetime.strptime(str, '%Y-%m-%d %H:%M:%S')
+    # return pd.datetime.strptime(str, '%Y-%m-%d-%H-%M-%S')
 
 
 def elapsed_strftime(td):
-    hours = td.seconds // (60*60)
-    mins = td.seconds // 60 - 60 * hours
+    hours = td.seconds // (SECONDS_IN_ONE_MINUTE*MINUTES_IN_ONE_HOUR)
+    mins = td.seconds // SECONDS_IN_ONE_MINUTE - MINUTES_IN_ONE_HOUR * hours
     string = "{0:2d}h {1:2d}m".format(hours, mins)
     return string
 
@@ -91,18 +107,8 @@ def color_text(txt, color=WHITE):
     ])
 
 
-def main():
-    tz_utc = pytz.timezone("UTC")
-    now = datetime.datetime.now(tz=tz_utc)
-
-    filename = 'attendance.csv'
-    filepath = os.path.join(
-        os.path.expanduser("~"),
-        'Projects/la_permanence',
-        filename
-    )
-
-    print("Report on recent data collection".upper())
+def does_file_exist(filepath=FILEPATH):
+    filename = filepath.split('/')[-1]
     try:
         with open(filepath, 'r') as fh:
             linelist = fh.readlines()
@@ -112,48 +118,50 @@ def main():
                     len(linelist) - 1
                 )
             )
+        return True
     except FileNotFoundError as e:
         print(e)
-        sys.exit(1)
+        return False
 
-    raw_data = pd.read_csv(
+
+def load_data(filepath, ts_start):
+    # tz_utc = pytz.timezone("UTC")
+    df = pd.read_csv(
         filepath,
         sep=',',
-        parse_dates=['timestamp'],
-        date_parser=dateparse
+        # parse_dates=['timestamp'],
+        # date_parser=dateparse
     )
-    raw_data['timestamp'] = \
-        raw_data['timestamp'].apply(lambda dt: dt.tz_localize(tz_utc))
+    # First rough filter, keep enough rows to cover last week
+    df = df.iloc[-MINUTES_IN_ONE_WEEK:]
+    df['timestamp'] = df['timestamp'].apply(dateparse)
+    df['timestamp'] = \
+        df['timestamp'].apply(lambda dt: dt.tz_localize(TZ_UTC))
 
-    ts_start = now - pd.Timedelta('7days 1hours')
-    ts_start = pd.Timestamp(
-        ts_start.year,
-        ts_start.month,
-        ts_start.day,
-        ts_start.hour,
-        5*(ts_start.minute // 5)
-    ).tz_localize(tz_utc)
+    df = df[df['timestamp'] >= ts_start]
 
-    timestamps = pd.DataFrame(
-        data=pd.date_range(start=ts_start, end=now, freq='5min'),
-        columns=['timestamp']
-        )
+    return df
 
-    df = raw_data[raw_data['timestamp'] >= ts_start].copy()
 
-    df['5 minutes'] = \
-        df['timestamp'].apply(
+def get_counts(df, now, timestamps):
+    """Return counts of timestamps within every 5-minute intervals over
+    the past week (plus one hour)"""
+
+    dg = df.copy()
+
+    dg['5 minutes'] = \
+        dg['timestamp'].apply(
             lambda dt: pd.Timestamp(
                 dt.year,
                 dt.month,
                 dt.day,
                 dt.hour,
                 5 * (dt.minute // 5)
-            ).tz_localize(tz_utc)
+            ).tz_localize(TZ_UTC)
         )
 
     dg = \
-        df.groupby('5 minutes')['timestamp'].count().reset_index().rename(
+        dg.groupby('5 minutes')['timestamp'].count().reset_index().rename(
             columns={'timestamp': 'count', '5 minutes': 'timestamp'}
         )
 
@@ -173,17 +181,46 @@ def main():
 
     dg = dg[['timestamp', 'elapsed', 'cumsum', 'count']]
 
+    return dg
+
+
+def get_5min_timestamps():
+    """Return timestamps for
+    - current date and time;
+    - date and time one week (plus one hour) ago; and
+    - dataframe with timestamps spaced every 5 minutes in between.
+    """
+    now = datetime.datetime.now(tz=TZ_UTC)
+    ts_start = now - pd.Timedelta('7days 1hours')
+    ts_start = pd.Timestamp(
+        ts_start.year,
+        ts_start.month,
+        ts_start.day,
+        ts_start.hour,
+        5*(ts_start.minute // 5)
+    ).tz_localize(TZ_UTC)
+
+    timestamps = pd.DataFrame(
+        data=pd.date_range(start=ts_start, end=now, freq='5min'),
+        columns=['timestamp']
+    )
+
+    return now, ts_start, timestamps
+
+
+def display_info(df, dg, now):
+    """Print to terminal timestamp count info from dataframe."""
     rows = [row_strf(row) for index, row in dg.iterrows()]
 
-    top_bar = "".join([
-        color_text("timestamp", color=CYAN).ljust(TIMESTAMP_WIDTH),
-        "elapsed".ljust(ELAPSED_WIDTH),
-        "reverse cumulative (+added in 5-minute block)"
-    ])
+    # top_bar = "".join([
+    #     color_text("timestamp", color=CYAN).ljust(TIMESTAMP_WIDTH),
+    #     "elapsed".ljust(ELAPSED_WIDTH),
+    #     "reverse cumulative (+added in 5-minute block)"
+    # ])
 
     top_bar = "".join([
-        "timestamp".ljust(TIMESTAMP_WIDTH),
-        "elapsed".ljust(ELAPSED_WIDTH),
+        "timestamp (UTC)".ljust(TIMESTAMP_WIDTH),
+        "elapsed since".ljust(ELAPSED_WIDTH),
         "reverse cumulative (+ added in 5-minute block)"
     ])
     graph = "\n".join(rows[-20:])
@@ -193,23 +230,63 @@ def main():
     print("-"*80)
     print(graph)
 
-    COL_WIDTH = 20
+    print("\nLast data collected:")
+    print(df.iloc[-3:])
+
     print("\nSummary of recent activity: number of records in the last\n")
 
-    nb = df[now < df['timestamp'] + pd.Timedelta('7D')].shape[0]
-    print("{0}: {1}".format("week".ljust(COL_WIDTH), nb))
+    for (freq, label) in [
+            ('7D', '1 week'),
+            ('3D', '3 days'),
+            ('24H', '24 hours'),
+            ('60m', '60 minutes'),
+            ('5m', '5 minutes')
+    ]:
+        
+        string = fmt_summary(df, now, freq=freq, label=label)
+        print(string)
 
-    nb = df[now < df['timestamp'] + pd.Timedelta('3D')].shape[0]
-    print("{0}: {1}".format("3 days".ljust(COL_WIDTH), nb))
+    return
 
-    nb = df[now < df['timestamp'] + pd.Timedelta('24H')].shape[0]
-    print("{0}: {1}".format("24 hours".ljust(COL_WIDTH), nb))
 
-    nb = df[now < df['timestamp'] + pd.Timedelta('60m')].shape[0]
-    print("{0}: {1}".format("60 minutes".ljust(COL_WIDTH), nb))
+def fmt_summary(df, now, freq, label):
+    LABEL_WIDTH = 20
 
-    nb = df[now < df['timestamp'] + pd.Timedelta('5m')].shape[0]
-    print("{0}: {1}".format("5 minutes".ljust(COL_WIDTH), nb))
+    label = label.ljust(LABEL_WIDTH)
+
+    max_hits = \
+        pd.Timedelta(freq).days * MINUTES_IN_ONE_DAY \
+        + pd.Timedelta(freq).seconds // SECONDS_IN_ONE_MINUTE
+
+    count = df[now < df['timestamp'] + pd.Timedelta(freq)].shape[0]
+
+    percentage = f'{count/max_hits:.0%}'
+    percentage = f'({percentage})'.rjust(6)
+
+    count = str(count).rjust(6)
+
+    string = "{0}: {1}  {2}".format(
+        label,
+        count,
+        percentage
+    )
+    return string
+
+
+def main():
+    print('-'*60)
+    print("La Permanence - recently collected data report")
+
+    if not does_file_exist(filepath=FILEPATH):
+        return
+
+    now, ts_start, timestamps = get_5min_timestamps()
+
+    df = load_data(filepath=FILEPATH, ts_start=ts_start)
+
+    dg = get_counts(df, now, timestamps)
+
+    display_info(df, dg, now)
 
 
 if __name__ == '__main__':

@@ -42,9 +42,10 @@
 #!attendance.csv
 
 # PYTHON SCRIPTS
-!la-permanence-scraping.py
-!la-permanence-correct-timezone-error.py
+!scraping.py
 !report.py
+!backup.py
+!la-permanence-correct-timezone-error.py
 
 # JUPYTER NOTEBOOKS
 !la-permanence-understanding.ipynb

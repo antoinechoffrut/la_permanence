@@ -39,7 +39,9 @@ kaggle](https://www.kaggle.com/antoinechoffrut/la-permanence-attendance).
 
 
 ## Scripts
-1. The script `la-permanence-scraping.py` collects the data.   
+1. The script `scraping.py` collects the data.   
+2. The script `backup.py` performs hourly, daily, and weekly backup of the datafile.  
+3. The script `report.py` is a convenience script, summarizing the most recent data collections.  
 
 ## Notebooks
 1. The Jupyter Notebook `la-permanence-understanding.ipynb` is a very
