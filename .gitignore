@@ -4,6 +4,7 @@
 /*/*
 
 !.gitignore
+!environment.yml
 
 !README.md
 
