@@ -30,6 +30,7 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 #     'scripts'
 # )
 DATA_DIR = os.path.join(os.path.expanduser('~'), 'Data', 'la_permanence')
+BACKUP_DIR = os.path.join(SCRIPT_DIR, '../DATA_BACKUPS')
 
 DATAFILE_NAME = 'availability.csv'  # formerly: 'attendance.csv'
 DATAFILE_PATH = os.path.join(
@@ -144,7 +145,7 @@ def get_backup_path(mode):
         ]),
         DATAFILE_NAME.split('.')[-1]
     ])
-    backup_path = os.path.join(DATA_DIR, backup_name)
+    backup_path = os.path.join(BACKUP_DIR, backup_name)
     return backup_name, backup_path
 
 
@@ -180,7 +181,7 @@ def main():
             last_ts = df_backup['timestamp'].max()
 
             if is_time_to_backup(run_time, last_ts, freq):
-                LOGGER.info(f"Mode {mode}: backup file updated.")
+                LOGGER.info(f"Mode {mode.ljust(10)}: backup file updated.")
                 shutil.copy(DATAFILE_PATH, backup_path)
             else:
                 LOGGER.info(f"Mode {mode.ljust(10)}: not yet time to update.")

@@ -140,7 +140,8 @@ def main():
     line = SEP.join([timestamp, moulin_seats, alesia_seats])
     # LOGGER.info(f"Line to append to csv file: {line}")
 
-    LOGGER.info("Create csv file if does not exist.")
+    # LOGGER.info("Create csv file if does not exist.")
+    LOGGER.info("Check if csv file already exists, else create it.")
     check_path()
     LOGGER.info(f'Write "{line}" to end of file.')
     write_data(line)

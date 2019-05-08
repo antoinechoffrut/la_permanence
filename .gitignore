@@ -42,6 +42,9 @@
 # DATASETS: exclude it to avoid overwriting good files
 #!attendance.csv
 
+# MODULES
+!LaPermanence.py
+
 # PYTHON SCRIPTS
 !scraping.py
 !report.py
