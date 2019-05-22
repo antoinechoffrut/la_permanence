@@ -97,13 +97,20 @@ class DataManager:
         'WeekOf': 'MinuteOfWeek'
     }
 
-    DAYS_OF_THE_WEEK = {0: 'Monday',
-                        1: 'Tuesday',
-                        2: 'Wednesday',
-                        3: 'Thursday',
-                        4: 'Friday',
-                        5: 'Saturday',
-                        6: 'Sunday'}
+    # DAYS_OF_THE_WEEK = {0: 'Monday',
+    #                     1: 'Tuesday',
+    #                     2: 'Wednesday',
+    #                     3: 'Thursday',
+    #                     4: 'Friday',
+    #                     5: 'Saturday',
+    #                     6: 'Sunday'}
+    DAYS_OF_THE_WEEK = {0: 'lundi',
+                        1: 'mardi',
+                        2: 'mercredi',
+                        3: 'jeudi',
+                        4: 'vendredi',
+                        5: 'samedi',
+                        6: 'dimanche'}
 
     @staticmethod
     def dateparse(timestamp, timestamp_format=TIMESTAMP_FORMAT):
@@ -343,7 +350,7 @@ class View:
         if self.index == 'MinuteOfDay':
             ticks = HOURLY
             ticklabels = \
-                ["{0:02d}:00".format(x)
+                ["{0:02d}h00".format(x)
                  for x in range(0, 24)]
 
         elif self.index == 'MinuteOfWeek':
@@ -353,7 +360,7 @@ class View:
             ticklabels = \
                 [DataManager.DAYS_OF_THE_WEEK[int(x // ONE_DAY)].ljust(12)
                  if (x % ONE_DAY == 0) and (x < ONE_WEEK)
-                 else f'{(x % ONE_DAY) // ONE_HOUR:02d}:00'
+                 else f'{(x % ONE_DAY) // ONE_HOUR:02d}h'
                  for x in ticks]
 
         if (plot_type == 'heatmap') \
@@ -433,7 +440,7 @@ def heatmap(view, figsize, savefig=False):
     )
 
     title = view.location.name
-    xlabel = view.row_label()
+    xlabel = view.ro_wlabel()
     xticks, xticklabels = view.row_ticks(plot_type='heatmap')
     ylabel = view.col_label()
     yticks, yticklabels = view.col_ticks(plot_type='heatmap')
