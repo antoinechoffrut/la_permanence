@@ -14,13 +14,13 @@ import pandas as pd
 # Constants
 TZ_UTC = pytz.timezone("UTC")
 
-FILEDIR = os.path.join(
+LOCAL_DIR = os.path.join(
     os.path.expanduser('~'),
     'Data',
     'la_permanence'
 )
 FILENAME = 'availability.csv'  # formerly: 'attendance.csv'
-FILEPATH = os.path.join(FILEDIR, FILENAME)
+FILEPATH = os.path.join(LOCAL_DIR, FILENAME)
 
 SECONDS_IN_ONE_MINUTE = 60
 MINUTES_IN_ONE_HOUR = 60
@@ -242,7 +242,7 @@ def display_info(df, dg, now):
             ('60m', '60 minutes'),
             ('5m', '5 minutes')
     ]:
-        
+
         string = fmt_summary(df, now, freq=freq, label=label)
         print(string)
 
@@ -287,6 +287,11 @@ def main():
     dg = get_counts(df, now, timestamps)
 
     display_info(df, dg, now)
+    fmt_ts = '%Y-%m-%d %H:%M:%S'
+    tz_utc = pytz.timezone("UTC")
+    run_time = datetime.datetime.now(tz=tz_utc)
+    timestamp = run_time.strftime(fmt_ts)
+    print(f"\nCurrent timestamp (UTC): {timestamp}\n")
 
 
 if __name__ == '__main__':

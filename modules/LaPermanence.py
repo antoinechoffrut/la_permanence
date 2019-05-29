@@ -1,24 +1,66 @@
 #!/usr/bin/env python
 """
-Main module containing classes and functions for La Permanence
-project.
+New version of main module for La Permanence project.
+
+There are three main data files:
+- local: the file containing the data collected by this machine
+- kaggle: the file saved on kaggle
+- combined: the file obtained by merging the local and kaggle files
+
 """
 
 # Imports
 import os
+import re
+import zipfile
+import tempfile
 import pytz
-# import datetime
+import datetime
+import shlex
+import subprocess
+import logging
+import requests
+from bs4 import BeautifulSoup
+
 import numpy as np
 import pandas as pd
 
-# Plotting libraries for testing purposes only
+import seaborn as sns
 import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 
 # Constants
+FILENAME = 'availability.csv'
+# FILENAME = 'abc.csv'            # for debugging purposes
+
+LOCAL_DIR = os.path.join(
+    os.path.expanduser('~'), 'Data/la_permanence/'
+)
+COMBINED_DIR = os.path.join(
+    os.path.expanduser('~'), 'kaggle/la_permanence/'
+)
+SCRIPT_DIR = os.path.join(
+    os.path.expanduser('~'), 'Projects/la_permanence/scripts/'
+)
+# TMP_DIR = os.path.join(
+#     os.path.expanduser('~'), 'Projects/la_permanence/tmp/'
+# )
+TMP_DIR = tempfile.gettempdir()
+BACKUP_DIR = os.path.join(
+    os.path.expanduser('~'), 'Projects/la_permanence/DATA_BACKUPS/'
+)
+WEB_DIR = os.path.join(
+    os.path.expanduser('~'), 'Projects/la_permanence/la-permanence-web/'
+)
+FIG_DIR = os.path.join(
+    os.path.expanduser('~'), 'Projects/la_permanence/la-permanence-web/_images'
+)
+
+
+TZ_UTC = pytz.timezone("UTC")
+TZ_PARIS = pytz.timezone("Europe/Paris")
 
 ONE_HOUR = 60
 HOURLY = [h * ONE_HOUR for h in range(0, 24)]
@@ -29,12 +71,271 @@ DAILY = [d * ONE_DAY for d in range(0, 7)]
 ONE_WEEK = 7*ONE_DAY
 WEEKLY = [w * ONE_WEEK for w in range(0, 52)]
 
+DAYS_OF_THE_WEEK = {0: 'lundi',
+                    1: 'mardi',
+                    2: 'mercredi',
+                    3: 'jeudi',
+                    4: 'vendredi',
+                    5: 'samedi',
+                    6: 'dimanche'}
+
 
 # Functions
+# Helper functions
+
+def bytes_to_msg(result):
+    """Convert and format bytes to list of strings.
+
+    This is used to format output and error messages from stdout and stderr.
+    """
+    msg = result.decode()
+    msg = re.sub(r'\n$', '', msg)
+    msg = msg.split('\n')
+    msg = [line.split('\r')[-1] for line in msg]
+    return msg
+
+
+def subprocess_command(command, cwd=None):
+    """Run command and return exit code, stdout and stderr.
+
+    The parameter command is the string that would be passed at the
+    command prompt.
+    If the parameter cwd is not None, the function changes the working
+    directory to cwd.  (This is used when pushing to github.)
+    """
+    args = shlex.split(command, posix=False)
+
+    p = subprocess.Popen(
+        args,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT
+        )
+    try:
+        outs, errs = p.communicate(timeout=60)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        outs, errs = p.communicate()
+    finally:
+        returncode = p.returncode
+
+    return returncode, outs, errs
+
+
+def log_messages(msg, returncode):
+    """Log messages.
+
+    The parameter msg, if not None, is a list of strings of
+    characters.  Each string contains no newline nor carriage return,
+    and therefore represents a line to print to logfile.
+
+    The parameter returncode is the exit status of the command whose
+    message this function is logging.  The message is printed as info
+    if returncode is 0 and as error otherwise.
+
+    """
+    if (not msg) or (msg == ['']):
+        return
+
+    logger = logging.getLogger()
+
+    if returncode == 0:
+        for line in msg:
+            logger.info(line)
+    else:
+        for line in msg:
+            logger.error(line)
+
+
+# Decorators
+def log(func):
+    def wrapper():
+        returncode, outs, errs = func()
+        out_msg = bytes_to_msg(outs)
+        log_messages(out_msg, returncode=returncode)
+        return returncode, outs, errs
+    return wrapper
+
+
+# Commands
+@log
+def download_from_kaggle():
+    command = ' '.join([
+        'kaggle datasets download',
+        f'-f {FILENAME}',
+        f'-p {TMP_DIR}',
+        '--force',
+        'antoinechoffrut/la-permanence'
+    ])
+    returncode, outs, errs = subprocess_command(command)
+
+    return returncode, outs, errs
+
+
+@log
+def upload_to_kaggle():
+    """Upload dataset to kaggle.
+
+    The dataset is in the file ~/kaggle/la_permanence/availability.csv
+    and contains the data collected locally on this computer with the
+    previous version of the data from kaggle.
+    """
+    unwanted_file = os.path.join(COMBINED_DIR, '.DS_Store')
+    if os.path.exists(unwanted_file):
+        os.remove(unwanted_file)
+
+    command = ' '.join([
+        'kaggle datasets version',
+        '-d',
+        # f'-p {COMBINED_DIR}',
+        '-p bob',
+        '-m Update'
+    ])
+
+    returncode, outs, errs = subprocess_command(command)
+
+    return returncode, outs, errs
+
+
+@log
+def git_add_figures():
+    cwd = FIG_DIR
+    fignames = []
+    """Stage figures moulin-summary.png and alesia-summary.png."""
+    for location in ['moulin', 'alesia']:
+        fignames.append(
+            os.path.join(
+                FIG_DIR,
+                '-'.join([location, 'summary']) + '.png'
+            )
+        )
+    # fignames = ['bob.png']  # for debugging purposes
+
+    command = f"git add {' '.join(fignames)}"
+    returncode, outs, errs = \
+        subprocess_command(command, cwd=cwd)
+
+    return returncode, outs, errs
+
+
+@log
+def git_commit_figures():
+    """Commit staged figures."""
+    cwd = WEB_DIR
+
+    command = 'git commit -m "Update figures"'
+
+    returncode, outs, errs = \
+        subprocess_command(command, cwd=cwd)
+
+    return returncode, outs, errs
+
+
+@log
+def git_push_figures():
+    """Push figures"""
+    cwd = WEB_DIR
+
+    command = 'git push origin gh-pages'
+
+    returncode, outs, errs = \
+        subprocess_command(command, cwd=cwd)
+
+    return returncode, outs, errs
+
+
+# Scraping
+def get_LaPermanence_page():
+    """Retrieve page http://www.la-permanence.com"""
+    url = "https://www.la-permanence.com"
+    # url = "http://bsegerglb.com"
+    logger = logging.getLogger()
+    try:
+        page = requests.get(url)
+    except requests.ConnectionError as e:
+        page = None
+        logger.error(e)
+    return page
+
+
+def extract_data(page):
+    """Extract number of seats at Moulin and Alésia coworking spaces
+    from html page."""
+
+    FMT_TS = '%Y-%m-%d %H:%M:%S'
+    tz_utc = pytz.timezone("UTC")
+    run_time = datetime.datetime.now(tz=tz_utc)
+    timestamp = run_time.strftime(FMT_TS)
+
+    soup = BeautifulSoup(page.text, "html.parser")
+    locations = soup.find_all(
+        "div",
+        {"class": "seats"}
+    )
+
+    moulin_seats = ""
+    alesia_seats = ""
+
+    for location in locations:
+        if "Moulin" in location.find_all("p")[0].text:
+            moulin_seats = re.sub(
+                "Places",
+                "",
+                location.find_all("span")[0].text
+            ).strip()
+        elif "Alésia" in location.find_all("p")[0].text:
+            alesia_seats = re.sub(
+                "Places",
+                "",
+                location.find_all("span")[0].text
+            ).strip()
+
+    row = ','.join([timestamp, moulin_seats, alesia_seats])
+    return row  # moulin_seats, alesia_seats
+
+
+def write_data_to_file(row):
+    """Append row with data to datafile."""
+    logger = logging.getLogger()
+
+    os.makedirs(LOCAL_DIR, exist_ok=True)
+    path = os.path.join(LOCAL_DIR, FILENAME)
+
+    if not os.path.exists(path):
+        logger.warning(f'Datafile {path} did not exist, was created.')
+        with open(path, 'w') as file:
+            file.write('timestamp,moulin,alesia')
+            file.write('\n')
+
+    with open(path, 'a+') as file:
+        logger.info(f'Write "{row}" to datafile {path}.')
+        file.write(row)
+        file.write('\n')
+    return
+
+
+def scrape():
+    page = get_LaPermanence_page()
+    if page is None:
+        return
+    row = extract_data(page)
+    write_data_to_file(row)
+
+
+def combine_kaggle_local():
+    logger = logging.getLogger()
+    logger.info("Load local dataset...")
+    dm_local = DataManager(source='local')
+    logger.info("Load dataset from kaggle...")
+    dm_kaggle = DataManager(source='kaggle')
+    logger.info("Combine datasets...")
+    dm_combined = dm_kaggle.merge(dm_local)
+    filepath = os.path.join(COMBINED_DIR, FILENAME)
+    logger.info(f"Save combined dataset to {filepath}")
+    dm_combined.data.to_csv(filepath)
 
 
 # Classes
-
 class Location:
 
     LOC_INFO = {
@@ -49,19 +350,21 @@ class Location:
             'max_seats': 82
         }
     }
-    LOCATION_NAMES = LOC_INFO.keys()
 
     def __init__(self, name):
         if name not in self.LOC_INFO.keys():
-            print(f'ERROR: invalid location name "{name}"')
+            logger = logging.getLogger()
+            logger.error(f'Invalid location name "{name}"')
+            return None
         for key in self.LOC_INFO[name].keys():
             setattr(self, key, self.LOC_INFO[name][key])
 
-    def ticks(self):
+    def seat_ticks(self):
         ticks = \
             list(range(0, 10 * (2 + self.max_seats // 10), 10)) \
             + [self.max_seats]
-        ticklabels = [str(n) for n in ticks[:-1]] + [f'max: {ticks[-1]}']
+        ticklabels = \
+            [str(n) for n in ticks[:-1]] + [f'max: {ticks[-1]}']
         z = zip(ticks, ticklabels)
         z = sorted(z, key=lambda x: x[0])
         ticks, ticklabels = zip(*z)
@@ -69,15 +372,7 @@ class Location:
 
 
 class DataManager:
-    FILENAME = 'availability.csv'
-    PATH = os.path.join(
-        os.path.expanduser('~'), 'kaggle', 'la_permanence'
-    )
-
     TIMESTAMP_FORMAT = '%Y-%m-%d %H:%M:%S'
-
-    TZ_UTC = pytz.timezone("UTC")
-    TZ_PARIS = pytz.timezone("Europe/Paris")
 
     DAY_MODES = {
         'DayOfWeek': 'Day of week',
@@ -97,37 +392,34 @@ class DataManager:
         'WeekOf': 'MinuteOfWeek'
     }
 
-    # DAYS_OF_THE_WEEK = {0: 'Monday',
-    #                     1: 'Tuesday',
-    #                     2: 'Wednesday',
-    #                     3: 'Thursday',
-    #                     4: 'Friday',
-    #                     5: 'Saturday',
-    #                     6: 'Sunday'}
-    DAYS_OF_THE_WEEK = {0: 'lundi',
-                        1: 'mardi',
-                        2: 'mercredi',
-                        3: 'jeudi',
-                        4: 'vendredi',
-                        5: 'samedi',
-                        6: 'dimanche'}
-
-    @staticmethod
-    def dateparse(timestamp, timestamp_format=TIMESTAMP_FORMAT):
-        return pd.datetime.strptime(timestamp, timestamp_format)
+    def __init__(self, data=None, source='local', nrows=None):
+        self.data = self.load_dataset(data, source, nrows)
 
     @classmethod
-    def load_data(cls, data=None, filename=FILENAME, path=PATH, nrows=None):
+    def load_dataset(cls, data=None, source='local', nrows=None):
+        logger = logging.getLogger()
         if data is not None:
             return data.copy()
 
-        path_to_file = os.path.join(path, filename)
-
-        if not os.path.exists(path_to_file):
-            print(f"Error: no file at {path_to_file}.")
+        if source == 'local':
+            path = os.path.join(LOCAL_DIR, FILENAME)
+        elif source == 'combined':
+            path = os.path.join(COMBINED_DIR, FILENAME)
+        elif source == 'kaggle':
+            download_from_kaggle()
+            path = os.path.join(TMP_DIR, FILENAME)
+            zip_file = path + '.zip'
+            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                zip_ref.extractall(TMP_DIR)
+            os.remove(zip_file)
+        else:
             return None
 
-        with open(path_to_file, 'r') as file:
+        if not os.path.exists(path):
+            logger.error(f"No file at {path}.")
+            return None
+
+        with open(path, 'r') as file:
             first_line = file.readline()
 
         columns = first_line.split('\n')[0].split(',')
@@ -135,31 +427,32 @@ class DataManager:
             ('timestamp' in columns) and \
             (('moulin' in columns) or ('alesia' in columns))
         if not valid_columns:
-            print("WARNING: incorrect column names: {columns}.")
+            logger.error(f"Incorrect column names: {columns}.")
             return None
         data = pd.read_csv(
-            path_to_file,
+            path,
             parse_dates=['timestamp'],
             date_parser=cls.dateparse,
             nrows=nrows)
 
         data['timestamp'] = \
             data['timestamp'].apply(
-                lambda dt: dt.tz_localize(cls.TZ_UTC).tz_convert(cls.TZ_PARIS)
+                lambda dt: dt.tz_localize(TZ_UTC).tz_convert(TZ_PARIS)
             )
 
         data.set_index("timestamp", inplace=True)
 
         return data
 
+    @staticmethod
+    def dateparse(timestamp, timestamp_format=TIMESTAMP_FORMAT):
+        return pd.datetime.strptime(timestamp, timestamp_format)
+
     def resample(self, resol=5):
         self.data = \
             self.data.resample(
                 f'{resol}T'
             ).mean().interpolate().round().astype(np.uint8)
-
-    def __init__(self, data=None, filename=FILENAME, path=PATH, nrows=None):
-        self.data = self.load_data(data, filename, path, nrows)
 
     def augment_features(self):
         data = self.data
@@ -169,7 +462,7 @@ class DataManager:
         data['Date'] = data['timestamp'].apply(
             lambda ts: pd.Timestamp(
                 ts.year, ts.month, ts.day
-            ).tz_localize(self.TZ_PARIS)
+            ).tz_localize(TZ_PARIS)
         )
 
         attributes = \
@@ -191,6 +484,11 @@ class DataManager:
 
         index = DataManager.MODE_TO_INDEX[mode]
         df = self.data.loc[:, [location.name, mode, index]].copy()
+        if df.index.freq is None:
+            logger = logging.getLogger()
+            logger.warning("Must resample data before creating view.")
+            return None
+
         df.rename(columns={location.name: 'availability'}, inplace=True)
         table = pd.pivot_table(
             df,
@@ -198,96 +496,91 @@ class DataManager:
             columns=mode,
             values='availability'
         )
-        freq = {
-            'n': self.data.index.freq.n,
-            'name': self.data.index.freq.name,
-        }
 
-        return View(table, location, freq)
-
-    def split_by_mode(self, mode, location):
-        if mode not in self.MODES.keys():
-            print("WARNING: valid parameters are day and week.")
-            return None
-        data = self.data
-
-        index = self.MODE_TO_INDEX[mode]
-
-        dataframes = [
-            data.loc[data[mode] == mode_value, [location.name, index]]
-            for mode_value in data[mode].unique()
-        ]
-        tables = [
-            pd.DataFrame(
-                data=dataframe[location.name].values,
-                index=dataframe[index],
-                columns=['availability']
-            )
-            for dataframe in dataframes
-        ]
-
-        freq = {
-            'name': data.index.freq.name,
-            'n': data.index.freq.n
-        }
-
-        views = [
-            View(table, location, freq)
-            for table in tables
-        ]
-
-        return views
+        return View(table, location)
 
     def past_week(self):
+        """Generate DataManager object from data of past week."""
         last_timestamp = self.data.index.max()
         last_week_timestamp = last_timestamp - pd.Timedelta('7D')
         last_week = self.data[self.data.index >= last_week_timestamp].copy()
 
         return DataManager(last_week)
 
+    def merge(self, other):
+        df_left = self.data.copy()
+        df_right = other.data.copy()
+        for dg in [df_left, df_right]:
+            dg.reset_index(inplace=True)
+            dg['timestamp'] = \
+                dg['timestamp'].apply(lambda ts: ts.replace(second=0))
+
+        df = pd.merge(
+            left=df_left,
+            right=df_right,
+            on=['timestamp', 'moulin', 'alesia'],
+            how='outer',
+            # indicator=True
+        )
+        df.drop_duplicates(subset='timestamp', inplace=True)
+        df.set_index('timestamp', inplace=True)
+
+        return DataManager(data=df)
+
 
 class View:
-
-    def __init__(self, table, location, freq):
+    def __init__(self, table, location):
         self.table = table
         self.index = self.table.index.name
-        self.mode = self.table.columns.name
-        self.freq = freq
+        # self.mode = self.table.columns.name
+        # self.freq = freq
         self.location = location
 
-    def apply_func(self, func):
-        new_table = \
-            self.table.apply(func, axis=1).to_frame(name=func.__name__)
-        new_view = View(new_table, self.location, freq=self.freq)
-        return new_view
+    def split_columns(self):
+        tables = [
+            self.table[col].rename(col.strftime('%Y-%m-%d')).to_frame()
+            for col in self.table.columns
+        ]
+
+        for table in tables:
+            table.columns.name = self.table.columns.name
+
+        views = [View(table=table, location=self.location)
+                 for table in tables]
+        return views
 
     def mean(self):
         table = self.table.mean(axis=1).to_frame(name='mean')
+        table.columns.name = self.table.columns.name
         location = self.location
-        freq = self.freq
-        return View(table, location, freq)
+        return View(table, location)
+
+    def median(self):
+        table = self.table.median(axis=1).to_frame(name='median')
+        table.columns.name = self.table.columns.name
+        location = self.location
+        return View(table, location)
 
     def std(self):
         table = self.table.std(axis=1).to_frame(name='std')
+        table.columns.name = self.table.columns.name
         location = self.location
-        freq = self.freq
-        return View(table, location, freq)
+        return View(table, location)
 
     def min(self):
         table = self.table.min(axis=1).to_frame(name='min')
+        table.columns.name = self.table.columns.name
         location = self.location
-        freq = self.freq
-        return View(table, location, freq)
+        return View(table, location)
 
     def max(self):
         table = self.table.max(axis=1).to_frame(name='max')
+        table.columns.name = self.table.columns.name
         location = self.location
-        freq = self.freq
-        return View(table, location, freq)
+        return View(table, location)
 
     def clip(self, lower=None, upper=None, *args, **kwargs):
         location = self.location
-        freq = self.freq
         if ('inplace' in kwargs.keys()) and (kwargs['inplace'] is True):
             self.table.clip(lower=lower, upper=upper, axis=1, *args, **kwargs)
             return None
@@ -295,38 +588,38 @@ class View:
             table = self.table.clip(
                 lower=lower, upper=upper,
                 axis=1, *args, **kwargs)
-            return View(table, location, freq)
+            return View(table, location)
 
     def compatible_with(self, other):
         res = \
             (self.index == other.index) \
-            and (self.mode == other.mode) \
-            and (self.freq == other.freq) \
+            and (self.table.columns.name == other.table.columns.name) \
+            and (self.table.index.equals(other.table.index)) \
             and (self.location == other.location)
         return res
 
     def __add__(self, other):
+        logger = logging.getLogger()
         if not self.compatible_with(other):
-            print("WARNING: views not compatible")
-            return self
+            logger.error("Views not compatible")
+            return None
         values = self.table.values + other.table.values
         table = pd.DataFrame(data=values, index=self.table.index)
         location = self.location
-        freq = self.freq
-        return View(table, location, freq)
+        return View(table, location)
 
     def __sub__(self, other):
+        logger = logging.getLogger()
         if not self.compatible_with(other):
-            print("WARNING: views not compatible")
-            return self
+            logger.error("Views not compatible")
+            return None
         values = self.table.values - other.table.values
         table = pd.DataFrame(data=values, index=self.table.index)
         location = self.location
-        freq = self.freq
-        return View(table, location, freq)
+        return View(table, location)
 
     def __rmul__(self, scalar):
-        return View(scalar*self.table, self.location, self.freq)
+        return View(scalar*self.table, self.location)
 
     def color_cycle(self):
         if self.index == 'MinuteOfDay':
@@ -336,7 +629,7 @@ class View:
 
     def legend_labels(self):
         if self.index == 'MinuteOfDay':
-            return DataManager.DAYS_OF_THE_WEEK.values()
+            return DAYS_OF_THE_WEEK.values()
         if self.index == 'MinuteOfWeek':
             return []
 
@@ -358,23 +651,22 @@ class View:
                      for h in range(0, 24, 6) for d in range(0, 7)]
             ticks = ticks + [ONE_WEEK]
             ticklabels = \
-                [DataManager.DAYS_OF_THE_WEEK[int(x // ONE_DAY)].ljust(12)
+                [DAYS_OF_THE_WEEK[int(x // ONE_DAY)].ljust(12)
                  if (x % ONE_DAY == 0) and (x < ONE_WEEK)
                  else f'{(x % ONE_DAY) // ONE_HOUR:02d}h'
                  for x in ticks]
 
-        if (plot_type == 'heatmap') \
-           and self.freq['name'] == 'T':
-            ticks = [x // self.freq['n'] for x in ticks]
+        if (plot_type == 'heatmap'):
+            ticks = list(self.table.index)
 
         return ticks, ticklabels
 
     def col_label(self):
-        return DataManager.MODES[self.mode]
+        return DataManager.MODES[self.table.columns.name]
 
     def col_ticks(self, plot_type):
 
-        if self.mode == 'Date':
+        if self.table.columns.name == 'Date':
             date_range = \
                 pd.date_range(
                     self.table.columns.min(),
@@ -394,7 +686,7 @@ class View:
                 ])
             return ticks, ticklabels
 
-        if self.mode == 'DayOfYear':
+        if self.table.columns.name == 'DayOfYear':
             vals = self.table.columns.values
             enum = enumerate(vals)
             ticks, ticklabels = \
@@ -406,17 +698,17 @@ class View:
 
             return ticks, ticklabels
 
-        if self.mode == 'DayOfWeek':
+        if self.table.columns.name == 'DayOfWeek':
             vals = [the_day[0:3]
-                    for the_day in DataManager.DAYS_OF_THE_WEEK.values()]
-        elif self.mode == 'WeekOf':
+                    for the_day in DAYS_OF_THE_WEEK.values()]
+        elif self.table.columns.name == 'WeekOf':
             date_min = self.table.columns.min()
             date_max = self.table.columns.max()
             date_range = \
                 pd.date_range(date_min, date_max, freq='W')
             vals = [dt.strftime('Week of %Y-%m-%d')
                     for dt in self.table.columns]
-        elif self.mode == 'WeekOfYear':
+        elif self.table.columns.name == 'WeekOfYear':
             vals = self.table.columns.values
 
         enum = enumerate(vals)
@@ -429,456 +721,43 @@ class View:
         return ticks, ticklabels
 
 
-def heatmap(view, figsize, savefig=False):
-    fig, ax = plt.subplots(figsize=figsize)
-
-    df = view.table.transpose()
-    sns.heatmap(
-        df,
-        vmin=0,
-        vmax=view.location.max_seats,
-    )
-
-    title = view.location.name
-    xlabel = view.ro_wlabel()
-    xticks, xticklabels = view.row_ticks(plot_type='heatmap')
-    ylabel = view.col_label()
-    yticks, yticklabels = view.col_ticks(plot_type='heatmap')
-
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_xticks(xticks)
-    ax.set_xticklabels(xticklabels)
-    ax.set_ylabel(ylabel)
-    ax.set_yticks(yticks)
-    ax.set_yticklabels(yticklabels)
-
-    ax.tick_params(axis='x', labelrotation=45)
-
-    ax.tick_params(axis='y', labelrotation=0)
-
-    if savefig:
-        plt.savefig(
-            '-'.join([view.location.name, view.mode, 'heatmap']) + '.png'
-        )
-
-
-def plot(view, figsize, savefig=False):
-    fig, ax = plt.subplots(figsize=figsize)
-    ax.set_prop_cycle(
-        'color',
-        view.color_cycle()
-    )
-
-    df = view.table
-    plt.plot(
-        df,
-    )
-
-    title = view.location.name
-    xlabel = view.row_label()
-    xticks, xticklabels = view.row_ticks(plot_type='plot')
-    ylabel = 'Available seats'
-    yticks, yticklabels = view.location.ticks()
-    legend_labels = view.legend_labels()
-
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_xticks(xticks)
-    ax.set_xticklabels(xticklabels)
-    ax.set_ylabel(ylabel)
-    ax.set_yticks(yticks)
-    ax.set_yticklabels(yticklabels)
-
-    ax.tick_params(axis='x', labelrotation=45)
-
-    ax.tick_params(axis='y', labelrotation=0)
-
-    plt.legend(labels=legend_labels)
-    ax.grid()
-
-    if savefig:
-        plt.savefig(
-            '-'.join([view.location.name, view.mode, 'plot']) + '.png'
-        )
-
-
-# Scenarios
-
-def heatmap_grid_search(nrows=None, resol=5, figsize=(14, 8), savefig=True):
-
-    # Locations
+# main
+def joe():
     moulin = Location('moulin')
-    alesia = Location('alesia')
-    locations = [moulin, alesia]
-
-    # Location-by-mode
-    location_mode = \
-        [(location, mode)
-         for location in locations
-         for mode in DataManager.MODES.keys()]
-
-    dm = DataManager(nrows=nrows)
-    dm.resample()
+    # alesia = Location('alesia')
+    dm = DataManager(source='local', nrows=20000)
+    # dm.resample()
+    # print(dm.data.info())
     dm.augment_features()
+    print(dm.data.index.freq)
+    # print(dm.data.info())
+    view = dm.create_view(location=moulin, mode='WeekOf')
+    print(view.table.info())
+    print(view.table.tail())
+
+    view_mean = view.mean()
+    print(view_mean.table.head())
 
-    for location, mode in location_mode:
-        print(f'Location: {location.name}.  Mode: {mode}.')
-        view = dm.create_view(location, mode)
-
-        fig, ax = plt.subplots(figsize=figsize)
-
-        sns.heatmap(
-            view.table.transpose(),
-            vmin=0,
-            vmax=view.location.max_seats,
-        )
-
-        title = view.location.address
-        xlabel = view.row_label()
-        xticks, xticklabels = view.row_ticks(plot_type='heatmap')
-        ylabel = view.col_label()
-        yticks, yticklabels = view.col_ticks(plot_type='heatmap')
-
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(xticklabels)
-        ax.set_ylabel(ylabel)
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(yticklabels)
-
-        ax.tick_params(axis='x', labelrotation=45)
-
-        ax.tick_params(axis='y', labelrotation=0)
-
-        if savefig:
-            plt.savefig(
-                '-'.join([view.location.name, view.mode, 'heatmap']) + '.png'
-            )
-
-
-def summary(mode, nrows=None, resol=5, figsize=(14, 8), savefig=True):
-
-    # Locations
-    moulin = Location('moulin')
-    alesia = Location('alesia')
-    locations = [moulin, alesia]
-
-    dm = DataManager(nrows=nrows)
-    dm.resample(resol=resol)
-    dm.augment_features()
-
-    # Parameters
-
-    z_range = [.2, .5, 1]
-
-    color_mean = plt.rcParams['axes.prop_cycle'].by_key()['color'][2]
-    alpha_mean = 0.8
-
-    color_fill = plt.rcParams['axes.prop_cycle'].by_key()['color'][2]
-
-    for location in locations:
-        print(f'Location: {location.name}')
-
-        view_week = dm.create_view(location, mode=mode)
-        view_mean = view_week.mean()
-        view_std = view_week.std()
-
-        views_upper = \
-            [(view_mean + z*view_std).clip(0, view_week.location.max_seats)
-             for z in z_range]
-        views_lower = \
-            [(view_mean - z*view_std).clip(0, view_week.location.max_seats)
-             for z in z_range]
-
-        fig, ax = plt.subplots(figsize=figsize)
-
-        for idx, z in enumerate(z_range):
-            ax.fill_between(
-                view_mean.table.index,
-                views_upper[idx].table.values.flatten(),
-                views_lower[idx].table.values.flatten(),
-                alpha=1/len(z_range),
-                color=color_fill,
-                linewidth=0
-            )
-            handle_mean, = \
-                ax.plot(view_mean.table, color=color_mean, alpha=alpha_mean)
-
-        title = '-'.join([
-            view_week.location.address.capitalize(),
-        ])
-        xlabel = view_week.row_label()
-        xticks, xticklabels = view_week.row_ticks(plot_type='plot')
-        ylabel = 'Available seats'
-        yticks, yticklabels = view_week.location.ticks()
-
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(xticklabels)
-        ax.set_ylabel(ylabel)
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(yticklabels)
-        ax.set_ylim([yticks[0], yticks[-1]])
-
-        ax.tick_params(axis='x', labelrotation=45)
-
-        ax.tick_params(axis='y', labelrotation=0)
-
-        plt.grid()
-
-        savefig = True
-        if savefig:
-            plt.savefig(
-                '-'.join([location.name, mode, 'distribution']) + '.png'
-            )
-
-    return
-
-
-def basic_statistics(mode, nrows=None, resol=5, figsize=(14, 8), savefig=True):
-
-    resol = 5
-
-    # Locations
-    moulin = Location('moulin')
-    alesia = Location('alesia')
-    locations = [moulin, alesia]
-
-    dm = DataManager(nrows=nrows)
-    dm.resample(resol=resol)
-    dm.augment_features()
-
-    # Parameters
-
-    alpha = 0.8
-
-    color_mean = plt.rcParams['axes.prop_cycle'].by_key()['color'][2]
-    alpha_mean = alpha
-
-    color_min = plt.rcParams['axes.prop_cycle'].by_key()['color'][1]
-    alpha_min = alpha
-
-    color_max = plt.rcParams['axes.prop_cycle'].by_key()['color'][3]
-    alpha_max = alpha_min
-
-    color_std = plt.rcParams['axes.prop_cycle'].by_key()['color'][0]
-    alpha_std = alpha_mean
-
-    # Plotting
-    for location in locations:
-        print(f'Location: {location.name}')
-
-        view_week = dm.create_view(location, mode=mode)
-        view_mean = view_week.mean()
-        view_std = view_week.std()
-
-        view_max = view_week.max()
-        view_min = view_week.min()
-
-        fig, ax = plt.subplots(figsize=figsize)
-
-        handle_max, = \
-            ax.plot(view_max.table, color=color_max, alpha=alpha_max)
-        handle_mean, = \
-            ax.plot(view_mean.table, color=color_mean, alpha=alpha_mean)
-        handle_min, = \
-            ax.plot(view_min.table, color=color_min, alpha=alpha_min)
-
-        handle_std, = \
-            ax.plot(view_std.table, color=color_std, alpha=alpha_std)
-
-        title = '-'.join([
-            view_week.location.address.capitalize(),
-        ])
-        xlabel = view_week.row_label()
-        xticks, xticklabels = view_week.row_ticks(plot_type='plot')
-        ylabel = 'Available seats'
-        yticks, yticklabels = view_week.location.ticks()
-
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(xticklabels)
-        ax.set_ylabel(ylabel)
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(yticklabels)
-        ax.set_ylim([yticks[0], yticks[-1]])
-
-        ax.tick_params(axis='x', labelrotation=45)
-
-        ax.tick_params(axis='y', labelrotation=0)
-
-        ax.legend(handles=[handle_max,
-                           handle_mean,
-                           handle_min,
-                           handle_std],
-                  labels=['max', 'mean', 'min', 'std']
-                  )
-        plt.grid()
-
-        savefig = True
-        if savefig:
-            plt.savefig(
-                '-'.join([location.name, mode, 'week-statistics']) + '.png'
-            )
-
-
-def inspect_past_week(nrows=None, resol=5, figsize=(14, 8), savefig=True):
-    mode = 'WeekOf'
-
-    # Locations
-    moulin = Location('moulin')
-    alesia = Location('alesia')
-    locations = [moulin, alesia]
-
-    dm = DataManager(nrows=nrows)
-    dm.resample(resol=resol)
-    dm.augment_features()
-
-    past_week_dm = dm.past_week()
-    last_timestamp = past_week_dm.data.index.max()
-
-    # Parameters
-    alpha = 0.8
-    color_mean = plt.rcParams['axes.prop_cycle'].by_key()['color'][2]
-    # alpha_mean = alpha
-
-    color_fill = color_mean
-    alpha_fill = 0.4
-
-    color_current_week = 'k'
-    alpha_current_week = alpha
-
-    color_previous_week = 'k'
-    alpha_previous_week = alpha
-
-    color_label = plt.rcParams['axes.prop_cycle'].by_key()['color'][3]
-
-    for location in locations:
-        print(f"Location: {location.name}.")
-        view_week = dm.create_view(location=location, mode=mode)
-        view_mean = view_week.mean()
-        view_std = view_week.std()
-        view_lower = view_mean - view_std
-        view_lower.clip(0, view_week.location.max_seats, inplace=True)
-        view_upper = view_mean + view_std
-        view_upper.clip(0, view_week.location.max_seats, inplace=True)
-
-        past_week = past_week_dm.split_by_mode(location=location, mode=mode)
-        current_week = past_week[-1]
-
-        if len(past_week) > 1:
-            previous_week = past_week[0]
-        else:
-            previous_week = None
-
-        fig, (ax_top, ax_bot) = plt.subplots(2, 1, figsize=figsize)
-
-        title = '-'.join([
-            view_week.location.address.capitalize(),
-
-        ])
-        xlabel = view_week.row_label()
-        xticks, xticklabels = view_week.row_ticks(plot_type='plot')
-        ylabel = 'Available seats'
-        yticks, yticklabels = view_week.location.ticks()
-
-        for ax in (ax_top, ax_bot):
-
-            ax.fill_between(
-                    view_mean.table.index,
-                    view_upper.table.values.flatten(),
-                    view_lower.table.values.flatten(),
-                    alpha=alpha_fill,
-                    color=color_fill,
-                    linewidth=0
-                )
-
-            ax.grid()
-
-            ax.set_xticks(xticks)
-            ax.set_ylabel(ylabel)
-            ax.set_yticks(yticks)
-            ax.set_yticklabels(yticklabels)
-            ax.tick_params(axis='y', labelrotation=0)
-            ax.set_ylim([yticks[0], yticks[-1]])
-
-        # Specific to top subplot
-        if previous_week:
-            handle_previous_week, = \
-                ax_top.plot(previous_week.table,
-                            color=color_previous_week,
-                            alpha=alpha_previous_week)
-
-        handle_current_week, = \
-            ax_bot.plot(current_week.table,
-                        color=color_current_week,
-                        alpha=alpha_current_week)
-
-        ax_top.set_title(title)
-        ax_top.set_xticklabels(['']*len(xticks))
-
-        # Specific to bottom subplot
-        ax_bot.set_xlabel(xlabel)
-        ax_bot.set_xticklabels(xticklabels)
-
-        ax_bot.tick_params(axis='x', labelrotation=45)
-
-        last_minute_of_week = \
-            current_week.table.index[-1]
-        # last_availability = \
-        #     current_week.table.loc[last_minute_of_week, 'availability']
-
-        ax_bot.plot([last_minute_of_week, last_minute_of_week],
-                    [yticks[0], yticks[-1]],
-                    color=color_label)
-        horizontalshift = 4 * 60 // view_mean.freq['n']
-        if last_minute_of_week < ONE_WEEK // 2:
-            horizontalalignment = 'left'
-        else:
-            horizontalalignment = 'right'
-            horizontalshift = -horizontalshift
-        ax_bot.text(
-            last_minute_of_week + horizontalshift,
-            location.max_seats + 1,  # last_availability,
-            last_timestamp.strftime('%Y-%m-%d %H:%M'),
-            color=color_label,
-            fontweight='bold',
-            horizontalalignment=horizontalalignment)
-
-        savefig = True
-        if savefig:
-            plt.savefig(
-                '-'.join([location.name, mode, 'past', 'week']) + '.png'
-            )
-
-
-# Main function
 
 def main():
-    nrows = 10_000
-    resol = 5
-    savefig = True
-    # for func in [heatmap_grid_search, summary,
-    #              basic_statistics, inspect_past_week]:
-    #     print(func)
-    #     func(nrows=nrows, resol=resol)
-
-    # print(basic_statistics)
-    # basic_statistics(mode='WeekOf', nrows=nrows, resol=resol, savefig=savefig)
-    # print(basic_statistics)
-    # basic_statistics(mode='Date', nrows=nrows, resol=resol, savefig=savefig)
-    # print(summary)
-    # summary(mode='WeekOf', nrows=nrows, resol=resol, savefig=savefig)
-    # print(summary)
-    # summary(mode='Date', nrows=nrows, resol=resol, savefig=savefig)
-    print(heatmap_grid_search)
-    heatmap_grid_search(nrows=nrows, resol=resol, savefig=savefig)
-    # print(inspect_past_week)
-    # inspect_past_week(nrows=nrows, resol=resol, savefig=savefig)
+    script_name = os.path.basename(__file__)
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    script_log = os.path.join(
+        script_dir,
+        re.sub(".py$", ".log", script_name)
+    )
+    logging.basicConfig(
+        format='%(asctime)s.%(msecs)03d | %(levelname)-10s: %(message)s',
+        level=logging.DEBUG,
+        handlers=[
+            logging.FileHandler(script_log, mode='w'),
+            logging.StreamHandler()
+        ],
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    logger = logging.getLogger()
+    logger.info("Combine kaggle and local datasets:")
+    combine_kaggle_local()
 
 
 if __name__ == '__main__':
