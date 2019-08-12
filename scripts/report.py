@@ -134,6 +134,10 @@ def load_data(filepath, ts_start):
     )
     # First rough filter, keep enough rows to cover last week
     df = df.iloc[-MINUTES_IN_ONE_WEEK:]
+    print(f"\nCount of missing values since {df.iloc[0]['timestamp']}:")
+    print(df.isnull().sum())
+    print("")
+    df.dropna(inplace=True)
     df['timestamp'] = df['timestamp'].apply(dateparse)
     df['timestamp'] = \
         df['timestamp'].apply(lambda dt: dt.tz_localize(TZ_UTC))
