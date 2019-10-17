@@ -4,7 +4,7 @@
 /*/*
 
 !.gitignore
-!environment.yml
+# !environment.yml
 
 !README.md
 
@@ -51,8 +51,10 @@
 !report.py
 !backup.py
 !la-permanence-correct-timezone-error.py
+!/tmp/add-field-better.py
 
 # JUPYTER NOTEBOOKS
+!weekly-statistics-summary.ipynb
 !la-permanence-understanding.ipynb
 !la-permanence-seasonality.ipynb
 !la-permanence-random-forests-forecasting.ipynb
